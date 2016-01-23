@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ####################################################################################
 #
-# This script is for making automated snapraid sync process more robust.
+# This script is for making automated snapraid sync (and scrub) process more robust.
 # It is intended to be run instead of directly running snapraid and with a removable
 # parity disk.
 # It makes sure that the intended sources and parity destinations are mount points 
@@ -26,15 +26,32 @@
 #
 # You still have to have fstab and snapraid.conf configured.
 
-PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-
+# CONFIGURATION:
 SOURCES_MOUNT="/mnt/source1:/mnt/source2"
 PARITY_MOUNT="/mnt/parity1"
 PARITY_FILE="$PARITY_MOUNT/parity"
 
+# Variables prefixed with "WANT_" can be left empty for interactive operation
+SCRUB_PERCENT="5"              # How many percents to scrub, check snapraid manual for more info
+SCRUB_OLDER_THAN="20"          # Only check data that is older than N days
+WANT_SCRUB="y"                 # Scrub after syncing to check for bit rot
 WANT_CLOSE_DEVICE="y"          # Unmount the device afterwards.
 VERIFY_IF_MOUNTED="n"          # Ask if we should continue if the mountpoint is already 
                                # (maybe unexpectedly) available.
+
+# Optional log file (both sync and scrub). Check manual for information about format.
+# TODO: not implemented yet
+# SNAPRAID_LOGFILE="/mnt/backup/snapraid-%D-%T.log"
+
+# INTERNAL CONFIGURATION:
+# Including /usr/local to make sure snapraid can be found in PATH. 
+# It's safer to list /usr/local last so binaries there can't override e.g. /usr/bin
+PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+# Other options for all snapraid operations. Can be left empty.
+# TODO: not implemented yet
+# SNAPRAID_OPTIONS=""
+
+####################################################################################
 
 # Some checks first
 if [ "$(id -u)" == 0 ]; then
@@ -44,6 +61,19 @@ fi
 hash snapraid 2>/dev/null || { 
    echo  "ERROR: snapraid binary not found in PATH" >&2
    exit 1
+}
+
+function verify_missing_variables()
+{
+    if [ -z "$WANT_SCRUB" ]; then
+        echo -n "- Scrub data after syncing (Y/n)? "
+        read WANT_SCRUB
+    fi
+
+    if [ -z "$WANT_CLOSE_DEVICE" ]; then
+        echo -n "- Unmount device and remove it from system (Y/n)? "
+        read WANT_CLOSE_DEVICE
+    fi
 }
 
 function mount_parity_device()
@@ -61,20 +91,23 @@ function mount_parity_device()
         fi
     fi
 
-
     if [ ! -e "$PARITY_FILE" ]; then
         echo "ERROR: Parity file not found, aborting. Did mounting fail?" >&2
         exit 1
     fi
 }
 
+function do_scrubbing()
+{
+    if [ "$WANT_SCRUB" != "n" ] && [ "$WANT_SCRUB" != "N" ]; then
+        echo "--------------- SCRUBBING -------------"
+        snapraid -p "$SCRUB_PERCENT" -o "$SCRUB_OLDER_THAN" scrub
+        echo -e "\n---------------------------------------"
+    fi
+}
+
 function remove_parity_device()
 {
-    if [ -z "$WANT_CLOSE_DEVICE" ]; then
-        echo -n "- Unmount device and remove it from system (Y/n)?"
-        read WANT_CLOSE_DEVICE
-    fi
-
     if [ "$WANT_CLOSE_DEVICE" != "n" ] && [ "$WANT_CLOSE_DEVICE" != "N" ]; then
         echo -n "Unmounting parity disk: "
 
@@ -103,6 +136,8 @@ function ensure_source()
 
 
 # MAIN:
+verify_missing_variables
+
 IFS=":"
 for source in $SOURCES_MOUNT; do
     ensure_source "$source"
@@ -114,13 +149,13 @@ echo -e "\n--------------- SYNCING ---------------"
 snapraid sync
 return_code=$?
 echo -e "\n---------------------------------------"
+do_scrubbing
 remove_parity_device
 
 if [ $return_code -ne 0 ]; then
-    echo "ERROR: snapraid returned with an error code $return_code" >&2
+    echo "ERROR: snapraid sync returned with an error code $return_code" >&2
     echo "Bad bye!"
     exit 1
 else
     echo "Good bye!"
 fi
-
