@@ -91,8 +91,8 @@ function mount_parity_device()
         fi
     fi
 
-    if [ ! -e "$PARITY_FILE" ]; then
-        echo "ERROR: Parity file not found, aborting. Did mounting fail?" >&2
+    if [ ! -s "$PARITY_FILE" ]; then
+        echo "ERROR: Parity file not found or has size of 0, aborting. Did mounting fail?" >&2
         exit 1
     fi
 }
@@ -113,8 +113,6 @@ function remove_parity_device()
 
         if mountpoint -q "$PARITY_MOUNT"; then
             sudo umount "$PARITY_MOUNT" && echo "OK"
-
-            # TODO: maybe do something like "echo x > /sys/block/sda/device/delete" ?
         else
             echo "Not mounted, skipping!"
         fi
@@ -149,13 +147,14 @@ echo -e "\n--------------- SYNCING ---------------"
 snapraid sync
 return_code=$?
 echo -e "\n---------------------------------------"
-do_scrubbing
-remove_parity_device
 
 if [ $return_code -ne 0 ]; then
     echo "ERROR: snapraid sync returned with an error code $return_code" >&2
     echo "Bad bye!"
+    remove_parity_device
     exit 1
 else
+    do_scrubbing
+    remove_parity_device
     echo "Good bye!"
 fi
