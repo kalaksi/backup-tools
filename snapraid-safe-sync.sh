@@ -39,17 +39,16 @@ WANT_CLOSE_DEVICE="y"          # Unmount the device afterwards.
 VERIFY_IF_MOUNTED="n"          # Ask if we should continue if the mountpoint is already 
                                # (maybe unexpectedly) available.
 
-# Optional log file (both sync and scrub). Check manual for information about format.
-# TODO: not implemented yet
-# SNAPRAID_LOGFILE="/mnt/backup/snapraid-%D-%T.log"
-
 # INTERNAL CONFIGURATION:
 # Including /usr/local to make sure snapraid can be found in PATH. 
 # It's safer to list /usr/local last so binaries there can't override e.g. /usr/bin
 PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
-# Other options for all snapraid operations. Can be left empty.
-# TODO: not implemented yet
-# SNAPRAID_OPTIONS=""
+
+# Other options for sync and scrub. Can be left empty.
+# For example, enable logging for scrubs:
+# SCRUB_OPTIONS="-l /mnt/backup/snapraid/snapraid-scrub-%D-%T.log"
+SCRUB_OPTIONS=""
+SYNC_OPTIONS=""
 
 ####################################################################################
 
@@ -101,7 +100,7 @@ function do_scrubbing()
 {
     if [ "$WANT_SCRUB" != "n" ] && [ "$WANT_SCRUB" != "N" ]; then
         echo "--------------- SCRUBBING -------------"
-        snapraid -p "$SCRUB_PERCENT" -o "$SCRUB_OLDER_THAN" scrub
+        snapraid -p "$SCRUB_PERCENT" -o "$SCRUB_OLDER_THAN" $SCRUB_OPTIONS scrub
         echo -e "\n---------------------------------------"
     fi
 }
@@ -144,14 +143,14 @@ unset IFS
 
 mount_parity_device
 echo -e "\n--------------- SYNCING ---------------"
-snapraid sync
+snapraid $SYNC_OPTIONS sync
 return_code=$?
 echo -e "\n---------------------------------------"
 
 if [ $return_code -ne 0 ]; then
     echo "ERROR: snapraid sync returned with an error code $return_code" >&2
-    echo "Bad bye!"
     remove_parity_device
+    echo "Bad bye!"
     exit 1
 else
     do_scrubbing
