@@ -16,35 +16,51 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-SNAPSHOT_COUNT=3
-VOL_SIZE="200G"
-VG_NAME="$1"
-LV_NAME="$2"
-
 # Exit on any errors
 set -e 
+set -u
+
+# Default values
+SNAPSHOT_COUNT=3
+LV_SIZE="50G"
+
+function _help {
+    echo "Usage: $0 [-s lvm_compatible_size] [-c snapshot_count_to_keep] vg_name lv_name"
+    exit 1
+}
+
+while getopts ":c:s:" option; do
+    case $option in
+        s) LV_SIZE="$OPTARG";;
+        c) SNAPSHOT_COUNT="$OPTARG";;
+        \?) echo $OPTARG; _help;;
+    esac
+done
+shift $((OPTIND - 1))
+
+VG_NAME="${1:-}"
+LV_NAME="${2:-}"
+LV_PATH="/dev/${VG_NAME}/${LV_NAME}"
 
 if [ -z "$VG_NAME" ] || [ -z "$LV_NAME" ]; then
-    echo "Usage: $0 vg_name lv_name"
-    exit 1
+    _help
 fi
 
-for ((i=$SNAPSHOT_COUNT; i>0; i--)); do
-    snapshot_name="${LV_NAME}_snapshot_${i}"
-    snapshot_path="/dev/${VG_NAME}/${snapshot_name}"
+echo "* Creating a new snapshot (size: $LV_SIZE):"
+/sbin/lvcreate -L "$LV_SIZE" -s -n "${LV_NAME}_snapshot_$(date +%s)" "$LV_PATH"
 
-    # If block device exists
-    if [ -b "$snapshot_path" ]; then
-        if [ $i -eq $SNAPSHOT_COUNT ]; then
-            echo "* Removing oldest snapshot:" 
-            /sbin/lvremove --force "$snapshot_path"
-        else
-            new_path="/dev/${VG_NAME}/${LV_NAME}_snapshot_$((i+1))"
-            echo "* Rotating snapshots:"
-            /sbin/lvrename "$snapshot_path" "$new_path"
-        fi
+echo "* Removing older snapshots:" 
+snapshot_path_glob="${LV_PATH}_snapshot_*"
+
+# Process as long as there are too many snapshots
+while [ "$(ls -1q $snapshot_path_glob 2>/dev/null | wc -l)" -gt "$SNAPSHOT_COUNT" ]; do
+    oldest_snapshot="$(ls -1q $snapshot_path_glob | head -1)"
+
+    # Just a sanity check
+    if [ ! -b "$oldest_snapshot" ]; then
+        echo "Error: $oldest_snapshot is not a block device" >&2
+        exit 1
     fi
-done
 
-echo "* Creating a new snapshot ($VOL_SIZE):"
-/sbin/lvcreate -L "$VOL_SIZE" -s -n "$snapshot_name" "/dev/${VG_NAME}/${LV_NAME}"
+    /sbin/lvremove -f "$oldest_snapshot"
+done
