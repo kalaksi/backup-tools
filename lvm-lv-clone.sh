@@ -33,29 +33,35 @@ function _help {
     exit 1
 }
 
+function _error {
+    echo "${2:-}ERROR: $1" >&2
+    exit 1
+}
+
 function _verify_block_device {
     # Just a sanity check
     local device="${1:-}"
     if [ ! -b "$device" ]; then
-        echo "Error: ${device} is not a block device" >&2
-        exit 1
+        _error "Error: ${device} is not a block device"
     fi
 }
 
 function _cleanup {
-    local $_snapshot_path="${1:-}"
+    local _snapshot_path="${1:-}"
     echo "* Cleaning up"
-    echo "  Removing temporary snapshot:" 
     lvremove -f "$_snapshot_path"
 }
 
 # MAIN:
 
-while getopts ":c:s:" option; do
+# Need at least one parameter
+[ $# -gt 0 ] || _help
+
+while getopts ":n:s:" option; do
     case $option in
         n) LV_NAME_SUFFIX="$OPTARG";;
         s) TEMP_SNAPSHOT_SIZE="$OPTARG";;
-        \?) echo $OPTARG; _help;;
+        \?) _help;;
     esac
 done
 shift $((OPTIND - 1))
@@ -68,10 +74,14 @@ SOURCE_PATH="/dev/${SOURCE_VG_LV}"
 DESTINATION_PATH="/dev/${DESTINATION_VG}/${SOURCE_LV}${LV_NAME_SUFFIX}"
 TEMP_SNAPSHOT_PATH="/dev/${SOURCE_VG}/${SOURCE_LV}${TEMP_SNAPSHOT_NAME_SUFFIX}"
 _verify_block_device "$SOURCE_PATH"
-SOURCE_SIZE=$(lvs "$SOURCE_PATH" -o LV_SIZE --noheadings --units b --nosuffix)
+SOURCE_SIZE=$(lvs "$SOURCE_PATH" -o LV_SIZE --noheadings --units b --nosuffix | sed -e 's/^[[:space:]]*//')
+
+if ! type pv &>/dev/null; then
+    _error "pv must be installed"
+fi
 
 if [ -z "$SOURCE_VG_LV" ] || [ -z "$DESTINATION_VG" ] || \
-   [ -z "$SOURCE_LV" ]    || [ -z "$LV_NAME_SUFFIX" ] || \
+   [ -z "$SOURCE_LV" ]    || [ -z "$SOURCE_VG" ] || \
    [ -z "$SOURCE_SIZE" ]; then
     _help
 fi
@@ -86,8 +96,7 @@ fi
 
 DESTINATION_SIZE=$(lvs "$DESTINATION_PATH" -o LV_SIZE --noheadings --units b --nosuffix)
 if [ -z "$DESTINATION_SIZE" ] || [ "$DESTINATION_SIZE" -ne "$SOURCE_SIZE" ]; then
-    echo "  ERROR: destination LV exists but is different size than source"
-    exit 1
+    _error "destination LV exists but is different size than source" "  "
 fi
 
 echo "  Creating a temporary snapshot (size: $TEMP_SNAPSHOT_SIZE):"
@@ -99,7 +108,7 @@ sleep 5
 _verify_block_device "$TEMP_SNAPSHOT_PATH"
 _verify_block_device "$DESTINATION_PATH"
 # Continue to cleaning up the temporary snapshot even if copying fails
-dd if="$TEMP_SNAPSHOT_PATH" of="$DESTINATION_PATH" bs=2M status=progress || _return_value=1
+(dd bs=1M status=none if="$TEMP_SNAPSHOT_PATH" | pv -s "$SOURCE_SIZE" | dd bs=1M status=none conv=fdatasync of="$DESTINATION_PATH") || _return_value=1
 
 _cleanup "$TEMP_SNAPSHOT_PATH"
 
