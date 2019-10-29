@@ -27,8 +27,9 @@ TEMP_SNAPSHOT_NAME_SUFFIX="-temp_snapshot-${DATE_SUFFIX}"
 LV_NAME_SUFFIX="-clone-${DATE_SUFFIX}"
 
 function _help {
-    echo "Clones logical volumes to destination VG. Destination LV is created if it doesn't exist."
-    echo "The destination LV must have the exact same size as the source LV."
+    echo "Clones logical volumes to a destination VG. Destination LV is automatically created if it doesn't exist."
+    echo "If the destination LV is created manually, it should have the exact same size as the source LV."
+    echo ""
     echo "Usage: $0 [-n name-suffix ] [-s temporary_snapshot_size] source_vg/source_lv destination_vg"
     exit 1
 }
