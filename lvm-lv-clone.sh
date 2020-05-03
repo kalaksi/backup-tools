@@ -22,7 +22,7 @@ set -u
 
 # Default configuration
 TEMP_SNAPSHOT_SIZE="5G"
-DATE_SUFFIX="$(date +%s)"
+DATE_SUFFIX="$(date +%Y%m%d%H%M%S)"
 TEMP_SNAPSHOT_NAME_SUFFIX="-temp_snapshot-${DATE_SUFFIX}"
 LV_NAME_SUFFIX="-clone-${DATE_SUFFIX}"
 
@@ -48,9 +48,8 @@ function _verify_block_device {
 }
 
 function _cleanup {
-    local _snapshot_path="${1:-}"
     echo "* Cleaning up"
-    lvremove -f "$_snapshot_path"
+    lvremove -f "$1"
 }
 
 # MAIN:

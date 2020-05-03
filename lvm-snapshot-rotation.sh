@@ -23,6 +23,7 @@ set -u
 # Default values
 SNAPSHOT_COUNT=3
 LV_SIZE="50G"
+DATE_SUFFIX="$(date +%Y%m%d%H%M%S)"
 
 function _help {
     echo "Usage: $0 [-s lvm_compatible_size] [-c snapshot_count_to_keep] vg_name lv_name"
@@ -47,7 +48,7 @@ if [ -z "$VG_NAME" ] || [ -z "$LV_NAME" ]; then
 fi
 
 echo "* Creating a new snapshot (size: $LV_SIZE):"
-/sbin/lvcreate -L "$LV_SIZE" -s -n "${LV_NAME}_snapshot_$(date +%s)" "$LV_PATH"
+/sbin/lvcreate -L "$LV_SIZE" -s -n "${LV_NAME}_snapshot_${DATE_SUFFIX}" "$LV_PATH"
 
 echo "* Removing older snapshots:" 
 snapshot_path_glob="${LV_PATH}_snapshot_*"
