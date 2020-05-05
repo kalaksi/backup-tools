@@ -55,6 +55,7 @@ snapshot_path_glob="${LV_PATH}_snapshot_*"
 
 # Process as long as there are too many snapshots
 while [ "$(ls -1q $snapshot_path_glob 2>/dev/null | wc -l)" -gt "$SNAPSHOT_COUNT" ]; do
+    # Finds the oldest by simply sorting by names and getting the first one
     oldest_snapshot="$(ls -1q $snapshot_path_glob | head -1)"
 
     # Just a sanity check
