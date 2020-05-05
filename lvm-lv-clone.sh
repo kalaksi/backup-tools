@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# A tiny script cloning LVM logical volumes. Uses snapshots.
+# A tiny script for cloning LVM logical volumes. Uses snapshots.
 # Copyright (C) 2017 kalaksi@users.noreply.github.com
 #
 # This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,8 @@ LV_NAME_SUFFIX="-clone-${DATE_SUFFIX}"
 
 function _help {
     echo "Clones logical volumes to a destination VG. Destination LV is automatically created if it doesn't exist."
-    echo "If the destination LV is created manually, it should have the exact same size as the source LV."
+    echo "If the destination LV already exists or is created manually, it should have the exact same size as the source LV."
+    echo "It's possible to use snapshots (e.g. with lvm-snapshot-rotation.sh) and re-use previously cloned volumes to achieve incremental backups."
     echo ""
     echo "Usage: $0 [-n name-suffix ] [-s temporary_snapshot_size] source_vg/source_lv destination_vg"
     exit 1
