@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # A tiny script for creating and rotating LVM snapshots for backup purposes
 # Copyright (C) 2015 kalaksi@users.noreply.github.com

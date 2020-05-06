@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # A tiny script for cloning LVM logical volumes. Uses snapshots.
 # Copyright (C) 2017 kalaksi@users.noreply.github.com
