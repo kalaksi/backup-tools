@@ -17,8 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Exit on any errors
-set -e 
-set -u
+set -eu
 
 # Default values
 SNAPSHOT_COUNT=3
@@ -26,7 +25,10 @@ LV_SIZE="50G"
 DATE_SUFFIX="$(date +%Y%m%d%H%M%S)"
 
 function _help {
-    echo "Usage: $0 [-s lvm_compatible_size] [-c snapshot_count_to_keep] vg_name lv_name"
+    cat <<EOF
+Usage: $0 [-s lvm_compatible_size] [-c snapshot_count_to_keep] vg_name lv_name
+Default values are $LV_SIZE and $SNAPSHOT_COUNT respectively.
+EOF
     exit 1
 }
 
@@ -66,3 +68,4 @@ while [ "$(ls -1q $snapshot_path_glob 2>/dev/null | wc -l)" -gt "$SNAPSHOT_COUNT
 
     /sbin/lvremove -f "$oldest_snapshot"
 done
+exit 0

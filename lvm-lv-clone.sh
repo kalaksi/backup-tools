@@ -27,11 +27,13 @@ TEMP_SNAPSHOT_NAME_SUFFIX="-temp_snapshot-${DATE_SUFFIX}"
 LV_NAME_SUFFIX="-clone-${DATE_SUFFIX}"
 
 function _help {
-    echo "Clones logical volumes to a destination VG. Destination LV is automatically created if it doesn't exist."
-    echo "If the destination LV already exists or is created manually, it should have the exact same size as the source LV."
-    echo "It's possible to use snapshots (e.g. with lvm-snapshot-rotation.sh) and re-use previously cloned volumes to achieve incremental backups."
-    echo ""
-    echo "Usage: $0 [-n name-suffix ] [-s temporary_snapshot_size] source_vg/source_lv destination_vg"
+    cat <<EOF
+Clones logical volumes to a destination VG. Destination LV is automatically created if it doesn't exist.
+If the destination LV already exists or is created manually, it should have the exact same size as the source LV.
+It's possible to use snapshots (e.g. with lvm-snapshot-rotation.sh) and re-use previously cloned volumes to achieve incremental backups.
+
+Usage: $0 [-n name-suffix ] [-s temporary_snapshot_size] source_vg/source_lv destination_vg
+EOF
     exit 1
 }
 
