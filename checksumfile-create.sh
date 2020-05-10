@@ -45,8 +45,9 @@ EOF
 }
 
 function checksumfile_update {
-    declare checksum_file="$1"
-    declare find_params="$2"
+    declare hash_binary="$1"
+    declare checksum_file="$2"
+    declare find_params="$3"
     declare -i changed=0
 
     declare -A eligible_files
@@ -107,7 +108,7 @@ function checksumfile_create {
               echo -ne "    \033[1;33m$(grep -c "^[^#]" "$checksum_file")\033[0m existing checksums available. "
               if [ $update_existing -eq 1 ]; then
                   echo "Checking for new or deleted files... "
-                  checksumfile_update "$checksum_file" "$find_params" || { echo -e "    \033[1;31mAn error occurred. Updating aborted.\033[0m" >&2; exit 1; }
+                  checksumfile_update "$hash_binary" "$checksum_file" "$find_params" || { echo -e "    \033[1;31mAn error occurred. Updating aborted.\033[0m" >&2; exit 1; }
               else
                   echo "Skipping."
               fi
@@ -117,7 +118,7 @@ function checksumfile_create {
     done
 
     if [ $errors -eq 0 ]; then
-        echo -ne "\n\033[1mCompleted without errors.\033[0m"
+        echo -e "\n\033[1mCompleted without errors.\033[0m"
     else
         echo -e "\nEncountered errors with \033[1;31m$errors\033[0m checksum files!"
     fi
