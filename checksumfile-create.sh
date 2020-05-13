@@ -64,7 +64,7 @@ function checksumfile_update {
     # Add new files
     for efile in "${!eligible_files[@]}"; do
         if [ -z "${checksumfile_files[$efile]:-}" ]; then
-            "$hash_binary" "$efile" | tee -a "$checksum_file" | sed -E 's/^[^ ]+/  /' || return 1
+            "$hash_binary" "$efile" | tee -a "$checksum_file" | sed -E "s/^[^ ]+/$(printf "    \033[1;32mAdded\033[0m")/" || return 1
             changed=1
         fi
     done
@@ -74,7 +74,7 @@ function checksumfile_update {
         if [ -z "${eligible_files[$cfile]:-}" ]; then 
             declare cfile_escaped=$(printf '%s\n' "$cfile" | sed 's/[[\.*^$/]/\\&/g')
             sed -i'' "/^${checksumfile_files[$cfile]}..${cfile_escaped}/d" "$checksum_file" || return 1
-            echo -n "    $cfile"; echo -e ": \033[1;31mDELETED\033[0m"
+            echo -ne "    \033[1;31mDeleted\033[0m " ; echo "$cfile"
             changed=1
         fi
     done
