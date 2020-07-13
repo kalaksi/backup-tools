@@ -9,9 +9,9 @@ These tools were inspired by `shatag` with 2 important differences:
 1. written in bash with usually no additional dependencies
 2. data is stored using common files which makes it simpler and filesystem-agnostic if you don't mind the extra files ("SHA256SUMS"-file)
 
-Technically speaking, these scripts form an extension for checksumming tools such as `sha256sum`.  
-The main goal is to allow operating on directories simple and to provide functionality for periodic scrubbing/checking.
-It's also possible add new or delete files from the checksum file seamlessly.
+Basically, these scripts form an extension for existing checksumming tools such as `sha256sum`.  
+The main purpose is to make operating on directories simple and to provide functionality for periodic scrubbing/checking.
+It's also possible add or delete files from the checksum file seamlessly.
   
 The default settings are aimed for directories containing media larger than 50k and divided into subdirectories.  
 Use `-h` to see the details of available configuration options.
@@ -49,4 +49,6 @@ Processing directory Photos/ containing 3 available checksum files:
 Reached target percentage 2% of checked checksums.
 3/116 checksums checked. 0 errors found!
 ```
+
+To create the file for the current directory, issue `./checksumfile-create.sh -d 0 .` .
 
