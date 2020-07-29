@@ -5,9 +5,10 @@ These tools are meant to have very few dependencies so they should be very easy 
 
 # Details
 ## checksumfile-create & checksumfile-verify
-These tools were inspired by `shatag` with 2 important differences:  
+These tools were inspired by `shatag` with 3 important differences:  
 1. written in bash with usually no additional dependencies
 2. data is stored using common files which makes it simpler and filesystem-agnostic if you don't mind the extra files ("SHA256SUMS"-file)
+3. Verification result and timestamp is stored in the checksum-file(s), so they are not lost.
 
 Basically, these scripts form an extension for existing checksumming tools such as `sha256sum`.  
 The main purpose is to make operating on directories simple and to provide functionality for periodic scrubbing/checking.
