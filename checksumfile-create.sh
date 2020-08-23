@@ -21,8 +21,8 @@ declare HASH_BINARY="sha256sum"
 declare CHECKSUM_FILE="SHA256SUMS"
 declare -i DIR_DEPTH=1
 declare -i UPDATE_EXISTING=0
-# Only include files that are over 50kiB
-declare FIND_PARAMS="-size +50k"
+# Parameters for filtering find in find-command. For example, to only include files that are over 50kiB use: -f '-size +50k'
+declare FIND_PARAMS=""
 
 function _help {
     cat << EOF
