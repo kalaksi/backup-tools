@@ -51,5 +51,12 @@ Reached target percentage 2% of checked checksums.
 3/116 checksums checked. 0 errors found!
 ```
 
+Only print errors when verifying (useful for cron jobs):
+```
+$ ./checksumfile-verify.sh Photos/ >/dev/null
+1 errors found!
+```
+
+
 To create the file for the current directory, issue `./checksumfile-create.sh -d 0 .` .
 

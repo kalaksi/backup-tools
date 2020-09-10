@@ -124,8 +124,14 @@ function checksumfile_verify {
         fi
     done
 
-    echo -e "\n\033[1m${checksums_checked}/${checksums_total}\033[0m checksums checked. \033[1m${errors_total}\033[0m errors found!"
-    return $errors_total
+    echo -ne "\n\033[1m${checksums_checked}/${checksums_total}\033[0m checksums checked. "
+    if [ $errors_total -gt 0 ]; then
+        echo -e "\033[1;31m${errors_total}\033[0m errors found!" >&2
+        return 2
+    else
+        echo -e "\033[1;32m${errors_total}\033[0m errors found!"
+        return 0
+    fi
 }
 
 
@@ -149,5 +155,5 @@ if [ -z "$CHECKSUM_FILE" ] || [ -z "${1:-}" ]; then
     _help
 fi
 
-# Exit code will contain the total number of errors
+# Exit code 1 is for generic runtime error and 2 means errors in checksums were found.
 checksumfile_verify "$HASH_BINARY" "$CHECKSUM_FILE" "$VERIFY_PERCENTAGE" "$1"
