@@ -1,3 +1,6 @@
+# TODO: detect rename by comparing checksums from new files
+
+
 #!/usr/bin/env bash
 # Copyright (C) 2017 kalaksi@users.noreply.github.com
 #

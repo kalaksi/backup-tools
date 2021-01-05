@@ -55,7 +55,8 @@ function set_check_metadata {
     declare checksum_file="$1"
     declare -i failures="$2"
     declare old_metadata; old_metadata=$(get_check_metadata "$checksum_file") || return 1
-    declare new_metadata="# last checked $(date +"%Y-%m-%d_%H:%M:%S") with $failures failures"
+    # Timestamp is in UTC
+    declare new_metadata="# last checked $(date -u +"%Y-%m-%d_%H:%M:%S") with $failures failures"
 
     # Metadata doesn't exist yet
     if [[ ${old_metadata:0:4} == "0000" ]]; then
