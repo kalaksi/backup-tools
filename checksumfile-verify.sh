@@ -107,7 +107,7 @@ function checksumfile_verify {
               # Apply some colors too depending on the output
               "$hash_binary" --strict -c 2>/dev/null <<<"$line" | \
               sed -e 's/^/    /' \
-                  -e "s/OK/$(printf "\033[1;32mOK\033[0m/")" \
+                  -e "s/OK$/$(printf "\033[1;32mOK\033[0m/")" \
                   -e "s/FAILED/$(printf "\033[1;31mFAILED\033[0m/")"
             ) || ((checksum_errors += 1))
             ((checksums_checked += 1))
