@@ -116,10 +116,10 @@ function checksumfile_verify {
         done < <(grep '^[^#]' "$checksum_file")
 
         set_check_metadata "$checksum_file" "$checksum_errors" || ((errors_total += 1))
-        errors_total=$((errors_total + $checksum_errors))
+        errors_total=$((errors_total + checksum_errors))
         popd &>/dev/null
 
-        if [ $(( 100 * $checksums_checked / $checksums_total )) -ge $verify_percentage ]; then
+        if [ $(( 100 * checksums_checked / checksums_total )) -ge $verify_percentage ]; then
             echo -ne "\nReached target percentage ${verify_percentage}% of checked checksums."
             break
         fi

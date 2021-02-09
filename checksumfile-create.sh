@@ -1,6 +1,3 @@
-# TODO: detect rename by comparing checksums from new files
-
-
 #!/usr/bin/env bash
 # Copyright (C) 2017 kalaksi@users.noreply.github.com
 #
@@ -16,6 +13,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# TODO: detect rename by comparing checksums from new files
 
 set -eu -o pipefail
 
