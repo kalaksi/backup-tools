@@ -6,7 +6,7 @@ These tools are meant to have very few dependencies so they should be very easy 
 # Details
 ## checksumfile-create & checksumfile-verify
 These tools were inspired by `shatag` with 3 important differences:  
-1. Written in bash with usually no additional dependencies.
+1. Written in bash (4.2) with usually no additional dependencies.
 2. Data is stored using common files which makes it simpler and filesystem-agnostic if you don't mind the extra files ("SHA256SUMS"-file). Do note that this also means that the original checksums are kept even when copying files between filesystems. This provides protection against other software or user errors, but is mostly usable for data that doesn't change often.
 3. Verification result and timestamp is stored in the checksum-file(s), so they are not lost.
 

@@ -14,9 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# TODO: detect rename by comparing checksums from new files
-
+# Note that most of the error handling doesn't rely on shell opts because of the various pitfalls.
 set -eu -o pipefail
+
+# lastpipe allows "find | while read" work without subshells and helps with error handling.
+set +m
+shopt -s lastpipe
 
 # Default values
 declare HASH_BINARY="sha256sum"
@@ -52,18 +55,20 @@ function checksumfile_update {
     declare find_params="$3"
     declare -i changed=0
 
+    # Find files that should be hashed.
     declare -A eligible_files
-    while IFS='' read -d '' -r efile; do
+    find . -name "$checksum_file" -prune -o -type f $find_params -print0 | while IFS='' read -d '' -r efile; do
         eligible_files["$efile"]=1
-    done < <(find . -name "$checksum_file" -prune -o -type f $find_params -print0) || return 1
+    done || return 1
 
+    # Gather already hashed files to an associative array.
     declare -A checksumfile_files 
-    while IFS='' read -r line; do
+    sed -n -E 's/^([^# ]+) .(.*)/\1,\2/p' "$checksum_file" 2>/dev/null | while IFS='' read -r line; do
         # File name as the key and checksum as the value
         checksumfile_files["$(cut -d ',' -f 2- <<<"$line")"]="$(cut -d ',' -f 1 <<<"$line")"
-    done < <(sed -n -E 's/^([^# ]+) .(.*)/\1,\2/p' "$checksum_file" 2>/dev/null) || return 1
+    done || return 1
 
-    # Add new files
+    # Add new files that are not hashed already.
     for efile in "${!eligible_files[@]}"; do
         if [ -z "${checksumfile_files[$efile]:-}" ]; then
             "$hash_binary" "$efile" | tee -a "$checksum_file" | sed -E "s/^[^ ]+/$(printf "    \033[1;32mAdded\033[0m")/" || return 1
@@ -71,7 +76,7 @@ function checksumfile_update {
         fi
     done
 
-    # Remove missing files
+    # Remove missing files.
     for cfile in "${!checksumfile_files[@]}"; do
         if [ -z "${eligible_files[$cfile]:-}" ]; then 
             declare cfile_escaped=$(printf '%s\n' "$cfile" | sed 's/[[\.*^$/]/\\&/g')
@@ -81,7 +86,7 @@ function checksumfile_update {
         fi
     done
 
-    # Reset metadata
+    # Reset verification metadata.
     if [ $changed -eq 1 ]; then
         sed -i'' '/^# last checked /d' "$checksum_file" || return 1
     fi
