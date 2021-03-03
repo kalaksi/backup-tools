@@ -69,12 +69,16 @@ function set_check_metadata {
 function list_checksumfiles_ordered {
     readarray -d '' files < <(find "$1" -type f -size +32c -name "$2" -print0)
     # Sort the files by last check time. Oldest first.
+    # Avoids plain file names at this point for simplicity.
     readarray -d '' sorted_indices < <(
       ( for i in "${!files[@]}"; do
-            metadata="$(get_check_metadata "${files[$i]}")" || { echo "Can't read checksum file '${files[$i]}'" >&2; continue; }
+            metadata="$(get_check_metadata "${files[$i]}")" || { echo -e "\033[1;31mCan't read checksum file\033[0m ${files[$i]}" >&2; continue; }
             printf "%s,%s\0" "$i" "$metadata"
         done ) | sort -t ',' -k 2 -z | cut -d ',' -f 1 -z
     )
+
+    # First element is for passing the error count.
+    printf "%s\0" "$((${#files[@]} - ${#sorted_indices[@]}))"
 
     for i in "${sorted_indices[@]}"; do
         printf "%s\0" "${files[$i]}"
@@ -88,9 +92,10 @@ function checksumfile_verify {
     declare main_dir="$4"
     # Note: checksum files that can't be accessed will be left out from the check
     readarray -d '' checksum_files < <(list_checksumfiles_ordered "$main_dir" "$checksum_file")
-    declare -i errors_total=0
+    declare -i errors_total=${checksum_files[0]}
+    unset 'checksum_files[0]'
     declare -i checksums_checked=0
-    declare -i checksums_total="$(printf "%s\0" "${checksum_files[@]}" | xargs -n1 -r -0 grep '^[^#]' | wc -l)"
+    declare -i checksums_total="$(printf "%s\0" "${checksum_files[@]}" | xargs -n1 -r -0 grep -s '^[^#]' | wc -l)"
     echo -e "\nProcessing directory \033[1m${main_dir}\033[0m containing \033[1;32m${#checksum_files[@]}\033[0m available checksum files:"
 
     for f in "${checksum_files[@]}"; do
