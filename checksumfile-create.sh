@@ -49,6 +49,10 @@ EOF
     exit 1
 }
 
+function find_wrapper {
+    eval 'find . -name "$1" -prune -o -type f '$2' -print0' || return 1
+}
+
 function checksumfile_update {
     declare hash_binary="$1"
     declare checksum_file="$2"
@@ -57,7 +61,7 @@ function checksumfile_update {
 
     # Find files that should be hashed.
     declare -A eligible_files
-    find . -name "$checksum_file" -prune -o -type f $find_params -print0 | while IFS='' read -d '' -r efile; do
+    find_wrapper "$checksum_file" "$find_params" | while IFS='' read -d '' -r efile; do
         eligible_files["$efile"]=1
     done || return 1
 
@@ -110,7 +114,7 @@ function checksumfile_create {
           cd -- "$workdir" || exit 1
 
           if [ ! -s "$checksum_file" ]; then
-              find . -name "$checksum_file" -prune -o -type f $find_params -print0 | xargs -r -0 -n1 "$hash_binary" | tee "$checksum_file" | sed -E 's/^[^ ]+/  /' || exit 1
+              find_wrapper "$checksum_file" "$find_params" | xargs -r -0 -n1 "$hash_binary" | tee "$checksum_file" | sed -E 's/^[^ ]+/  /' || exit 1
           else
               echo -ne "    \033[1;33m$(grep -c "^[^#]" "$checksum_file")\033[0m existing checksums available. "
               if [ $update_existing -eq 1 ]; then

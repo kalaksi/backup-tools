@@ -6,7 +6,7 @@ These tools are meant to have very few dependencies so they should be very easy 
 # Details
 ## checksumfile-create & checksumfile-verify
 These tools were inspired by `shatag` with 3 important differences:  
-1. Written in bash (4.2) with usually no additional dependencies.
+1. Written in bash (4.4) with usually no additional dependencies.
 2. Data is stored using common files which makes it simpler and filesystem-agnostic if you don't mind the extra files ("SHA256SUMS"-file). Do note that this also means that the original checksums are kept even when copying files between filesystems. This provides protection against other software or user errors, but is mostly usable for data that doesn't change often.
 3. Verification result and timestamp is stored in the checksum-file(s), so they are not lost.
 
@@ -36,6 +36,19 @@ $ ./checksumfile-create.sh -u Photos/
 Completed without errors.
 ```
 
+Ignore txt-files:
+```
+$ ./checksumfile-create.sh -u -f '-not -name "*.txt"' Photos/
+```
+
+Create the file for the selected directory instead of immediate subdirectories:
+```
+./checksumfile-create.sh -d 0 Photos/
+  Photos:
+    ./2018/birthday/abc.jpg
+    ./2018/birthday/def.jpg
+```
+
 Verify that they haven't changed:
 ```
 $ ./checksumfile-verify.sh -p 2 Photos/
@@ -51,12 +64,10 @@ Reached target percentage 2% of checked checksums.
 3/116 checksums checked. 0 errors found!
 ```
 
-Only print errors when verifying (useful for cron jobs):
+Only print errors when verifying (Useful for cron jobs. Checking the exit code can also help.):
 ```
 $ ./checksumfile-verify.sh Photos/ >/dev/null
 1 errors found!
 ```
 
-
-To create the file for the current directory, issue `./checksumfile-create.sh -d 0 .` .
 
