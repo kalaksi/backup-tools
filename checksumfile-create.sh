@@ -131,7 +131,7 @@ function checksumfile_create {
     if [ $errors -eq 0 ]; then
         echo -e "\n\033[1mCompleted without errors.\033[0m"
     else
-        echo -e "\nEncountered errors with \033[1;31m$errors\033[0m checksum files!"
+        echo -e "\nEncountered errors with \033[1;31m$errors\033[0m checksum files!" >&2
     fi
     return $errors
 }
