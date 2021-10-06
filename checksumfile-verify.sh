@@ -20,6 +20,7 @@ set -eu
 declare HASH_BINARY="sha256sum"
 declare CHECKSUM_FILE="SHA256SUMS"
 declare -i VERIFY_PERCENTAGE=100
+declare STATUS_ONLY="no"
 
 function _help {
     cat << EOF
@@ -36,15 +37,19 @@ Options:
   -p  Percentage of checksum files to process. E.g. "5" will mean that about 5% of the available
       checksum files will be processed. The file with the oldest check timestamp will be processed
       first. This means that it would take 20 days to go through all files. Default is $VERIFY_PERCENTAGE.
+  -s  Show status only. Scans all checksum files and lists check dates and failure counts.
 EOF
     exit 1
 }
 
 function get_check_metadata {
-    declare metadata;
+    declare timestamp_placeholder="${2:-0000-00-00_00:00:00}"
+    declare metadata
     metadata="$(sed -n -E '1 s/^# last checked ([0-9]+-[0-9]+-[0-9]+_[0-9]+:[0-9]+:[0-9]+) with ([0-9]+) failures/\1,\2/p' "$1" 2>/dev/null)" || return 1
+
+    # Return value format is: timestamp,failureCount
     if [ -z "$metadata" ]; then
-        printf "0000-00-00_00:00:00,0"
+        printf "$timestamp_placeholder,0"
     else
         printf "$metadata"
     fi
@@ -58,8 +63,8 @@ function set_check_metadata {
     # Timestamp is in UTC
     declare new_metadata="# last checked $(date -u +"%Y-%m-%d_%H:%M:%S") with $failures failures"
 
-    # Metadata doesn't exist yet
     if [[ ${old_metadata:0:4} == "0000" ]]; then
+        # Metadata doesn't exist yet, so insert it as the first line.
         sed -i'' "1 i $new_metadata" "$checksum_file"
     else
         sed -i'' "1 s/^# last checked.*/$new_metadata/" "$checksum_file"
@@ -67,7 +72,9 @@ function set_check_metadata {
 }
 
 function list_checksumfiles_ordered {
+    # Finds the checksum files and skips those that are basically empty.
     readarray -d '' files < <(find "$1" -type f -size +32c -name "$2" -print0)
+
     # Sort the files by last check time. Oldest first.
     # Avoids plain file names at this point for simplicity.
     readarray -d '' sorted_indices < <(
@@ -77,7 +84,7 @@ function list_checksumfiles_ordered {
         done ) | sort -t ',' -k 2 -z | cut -d ',' -f 1 -z
     )
 
-    # First element is for passing the error count.
+    # First element is for passing the error count which is the amount of files that couldn't be parsed.
     printf "%s\0" "$((${#files[@]} - ${#sorted_indices[@]}))"
 
     for i in "${sorted_indices[@]}"; do
@@ -96,6 +103,7 @@ function checksumfile_verify {
     unset 'checksum_files[0]'
     declare -i checksums_checked=0
     declare -i checksums_total="$(printf "%s\0" "${checksum_files[@]}" | xargs -n1 -r -0 grep -s '^[^#]' | wc -l)"
+
     echo -e "\nProcessing directory \033[1m${main_dir}\033[0m containing \033[1;32m${#checksum_files[@]}\033[0m available checksum files:"
 
     for f in "${checksum_files[@]}"; do
@@ -105,22 +113,33 @@ function checksumfile_verify {
         pushd -- "$workdir" &>/dev/null
         echo -e "  \033[1m${workdir}\033[0m:"
 
-        # Go through one by one for better view on progress and error counting
-        while IFS='' read -r line; do
-            (
-              set -o pipefail
-              # Apply some colors too depending on the output
-              "$hash_binary" --strict -c 2>/dev/null <<<"$line" | \
-              sed -e 's/^/    /' \
-                  -e "s/OK$/$(printf "\033[1;32mOK\033[0m/")" \
-                  -e "s/FAILED/$(printf "\033[1;31mFAILED\033[0m/")"
-            ) || ((checksum_errors += 1))
-            ((checksums_checked += 1))
+        if [ "$STATUS_ONLY" = "yes" ]; then
+            readarray -t -d ',' metadata <<<$(get_check_metadata "$checksum_file" "never")
+            echo "    Last checked: ${metadata[0]}"
+            if [ "${metadata[0]}" != "never" ]; then
+                echo -n "    Errors: ${metadata[1]}"
+		checksum_errors=$(($checksum_errors + ${metadata[1]}))
+            fi
 
-        # Trim out comment lines
-        done < <(grep '^[^#]' "$checksum_file")
+        else
+            # Go through one by one for better view on progress and error counting
+            while IFS='' read -r line; do
+                (
+                  set -o pipefail
+                  # Apply some colors too depending on the output
+                  "$hash_binary" --strict -c 2>/dev/null <<<"$line" | \
+                  sed -e 's/^/    /' \
+                      -e "s/OK$/$(printf "\033[1;32mOK\033[0m/")" \
+                      -e "s/FAILED/$(printf "\033[1;31mFAILED\033[0m/")"
+                ) || ((checksum_errors += 1))
+                ((checksums_checked += 1))
 
-        set_check_metadata "$checksum_file" "$checksum_errors" || ((errors_total += 1))
+            # Trim out comment lines
+            done < <(grep '^[^#]' "$checksum_file")
+
+            set_check_metadata "$checksum_file" "$checksum_errors" || ((errors_total += 1))
+        fi
+
         errors_total=$((errors_total + checksum_errors))
         popd &>/dev/null
 
@@ -141,11 +160,12 @@ function checksumfile_verify {
 }
 
 
-while getopts "hb:n:p:" option; do
+while getopts "shb:n:p:" option; do
     case $option in
         b) HASH_BINARY="$OPTARG";;
         n) CHECKSUM_FILE="$OPTARG";;
         p) VERIFY_PERCENTAGE="$OPTARG";;
+        s) STATUS_ONLY="yes";;
         h) _help;;
         \?) _help;;
     esac

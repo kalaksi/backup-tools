@@ -64,6 +64,23 @@ Reached target percentage 2% of checked checksums.
 3/116 checksums checked. 0 errors found!
 ```
 
+Show status from checksumfile metadata. Less recently scanned are displayed first.
+```
+$ ./checksumfile-verify.sh -s Photos/
+
+Processing directory Photos/ containing 3 available checksum files:
+  Photos/2017:
+    Last checked: never
+  Photos/2018:
+    Last checked: 2012-12-12_12:12:12
+    Errors: 0
+  Photos/2019:
+    Last checked: 2012-12-12_12:12:13
+    Errors: 0
+
+0/116 checksums checked. 0 errors found!
+```
+
 Only print errors when verifying (Useful for cron jobs. Checking the exit code can also help.):
 ```
 $ ./checksumfile-verify.sh Photos/ >/dev/null
