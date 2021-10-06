@@ -22,6 +22,11 @@ declare CHECKSUM_FILE="SHA256SUMS"
 declare -i VERIFY_PERCENTAGE=100
 declare STATUS_ONLY="no"
 
+declare C_WHITE=$(printf "\033[1m")
+declare C_GREEN=$(printf "\033[1;32m")
+declare C_RED=$(printf "\033[1;31m")
+declare C_END=$(printf "\033[0m")
+
 function _help {
     cat << EOF
 
@@ -79,7 +84,7 @@ function list_checksumfiles_ordered {
     # Avoids plain file names at this point for simplicity.
     readarray -d '' sorted_indices < <(
       ( for i in "${!files[@]}"; do
-            metadata="$(get_check_metadata "${files[$i]}")" || { echo -e "\033[1;31mCan't read checksum file\033[0m ${files[$i]}" >&2; continue; }
+            metadata="$(get_check_metadata "${files[$i]}")" || { echo -e "${C_RED}Can't read checksum file${C_END} ${files[$i]}" >&2; continue; }
             printf "%s,%s\0" "$i" "$metadata"
         done ) | sort -t ',' -k 2 -z | cut -d ',' -f 1 -z
     )
@@ -104,21 +109,24 @@ function checksumfile_verify {
     declare -i checksums_checked=0
     declare -i checksums_total="$(printf "%s\0" "${checksum_files[@]}" | xargs -n1 -r -0 grep -s '^[^#]' | wc -l)"
 
-    echo -e "\nProcessing directory \033[1m${main_dir}\033[0m containing \033[1;32m${#checksum_files[@]}\033[0m available checksum files:"
+    echo -e "\nProcessing directory ${C_WHITE}${main_dir}${C_END} containing ${C_GREEN}${#checksum_files[@]}${C_END} available checksum files:"
 
     for f in "${checksum_files[@]}"; do
         declare -i checksum_errors=0
 
         declare workdir=$(dirname "$f")
         pushd -- "$workdir" &>/dev/null
-        echo -e "  \033[1m${workdir}\033[0m:"
+        echo -e "  ${C_WHITE}${workdir}${C_END}:"
 
         if [ "$STATUS_ONLY" = "yes" ]; then
             readarray -t -d ',' metadata <<<$(get_check_metadata "$checksum_file" "never")
             echo "    Last checked: ${metadata[0]}"
             if [ "${metadata[0]}" != "never" ]; then
-                echo -n "    Errors: ${metadata[1]}"
-		checksum_errors=$(($checksum_errors + ${metadata[1]}))
+                echo -n "    Errors: ${metadata[1]}" | \
+                    sed -E -e "s/([1-9]+)$/${C_RED}\1${C_END}/" \
+                           -e "s/0$/${C_GREEN}0${C_END}/"
+
+                checksum_errors=$(($checksum_errors + ${metadata[1]}))
             fi
 
         else
@@ -129,8 +137,8 @@ function checksumfile_verify {
                   # Apply some colors too depending on the output
                   "$hash_binary" --strict -c 2>/dev/null <<<"$line" | \
                   sed -e 's/^/    /' \
-                      -e "s/OK$/$(printf "\033[1;32mOK\033[0m/")" \
-                      -e "s/FAILED/$(printf "\033[1;31mFAILED\033[0m/")"
+                      -e "s/OK$/${C_GREEN}OK${C_END}/" \
+                      -e "s/FAILED/${C_RED}FAILED${C_END}/"
                 ) || ((checksum_errors += 1))
                 ((checksums_checked += 1))
 
@@ -149,12 +157,12 @@ function checksumfile_verify {
         fi
     done
 
-    echo -ne "\n\033[1m${checksums_checked}/${checksums_total}\033[0m checksums checked. "
+    echo -ne "\n${C_WHITE}${checksums_checked}/${checksums_total}${C_END} checksums checked. "
     if [ $errors_total -gt 0 ]; then
-        echo -e "\033[1;31m${errors_total}\033[0m errors found!" >&2
+        echo -e "${C_RED}${errors_total}${C_END} errors found!" >&2
         return 2
     else
-        echo -e "\033[1;32m${errors_total}\033[0m errors found!"
+        echo -e "${C_GREEN}${errors_total}${C_END} errors found!"
         return 0
     fi
 }
