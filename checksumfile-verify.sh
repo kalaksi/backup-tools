@@ -48,9 +48,15 @@ EOF
 }
 
 function get_check_metadata {
+    declare checksumfile="$1"
     declare timestamp_placeholder="${2:-0000-00-00_00:00:00}"
     declare metadata
-    metadata="$(sed -n -E '1 s/^# last checked ([0-9]+-[0-9]+-[0-9]+_[0-9]+:[0-9]+:[0-9]+) with ([0-9]+) failures/\1,\2/p' "$1" 2>/dev/null)" || return 1
+    metadata="$(sed -n -E '1 s/^# last checked ([0-9]+-[0-9]+-[0-9]+_[0-9]+:[0-9]+:[0-9]+) with ([0-9]+) failures/\1,\2/p' "$checksumfile" 2>/dev/null)"
+
+    if [ $? -ne 0 ]; then
+        echo -e "${C_RED}Can't read checksum file${C_END} $checksumfile" >&2
+        return 1
+    fi
 
     # Return value format is: timestamp,failureCount
     if [ -z "$metadata" ]; then
@@ -84,7 +90,7 @@ function list_checksumfiles_ordered {
     # Avoids plain file names at this point for simplicity.
     readarray -d '' sorted_indices < <(
       ( for i in "${!files[@]}"; do
-            metadata="$(get_check_metadata "${files[$i]}")" || { echo -e "${C_RED}Can't read checksum file${C_END} ${files[$i]}" >&2; continue; }
+            metadata="$(get_check_metadata "${files[$i]}")" || continue
             printf "%s,%s\0" "$i" "$metadata"
         done ) | sort -t ',' -k 2 -z | cut -d ',' -f 1 -z
     )
@@ -119,7 +125,7 @@ function checksumfile_verify {
         echo -e "  ${C_WHITE}${workdir}${C_END}:"
 
         if [ "$STATUS_ONLY" = "yes" ]; then
-            readarray -t -d ',' metadata <<<$(get_check_metadata "$checksum_file" "never")
+            readarray -t -d ',' metadata <<<$(get_check_metadata "$checksum_file" "never") || continue
             echo "    Last checked: ${metadata[0]}"
             if [ "${metadata[0]}" != "never" ]; then
                 echo -n "    Errors: ${metadata[1]}" | \

@@ -135,10 +135,11 @@ function checksumfile_create {
 
     if [ $errors -eq 0 ]; then
         echo -e "\n${C_WHITE}Completed without errors.${C_END}"
+        return 0
     else
         echo -e "\nEncountered errors with ${C_RED}$errors${C_END} checksum files!" >&2
+        return 2
     fi
-    return $errors
 }
 
 while getopts "uhd:b:n:f:" option; do
@@ -163,6 +164,6 @@ if [ -z "$CHECKSUM_FILE" ] || [ ! $DIR_DEPTH -ge 0 ] || [ -z "${1:-}" ]; then
     _help
 fi
 
-# Exit code will contain the total number of errors
+# Exit code 1 is for critical runtime errors and 2 for non-critical errors with checksum files.
 checksumfile_create "$HASH_BINARY" "$CHECKSUM_FILE" "$DIR_DEPTH" "$FIND_PARAMS" "$UPDATE_EXISTING" "$1"
 
