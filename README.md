@@ -58,7 +58,7 @@ Processing directory Photos/ containing 3 available checksum files:
     ./birthday/abc.jpg: OK
     ./birthday/def.jpg: OK
   Photos/2019:
-    ./birthday/cake/abc.jpg
+    ./birthday/cake/abc.jpg: OK
 
 Reached target percentage 2% of checked checksums.
 3/116 checksums checked. 0 errors found!
@@ -76,9 +76,9 @@ Processing directory Photos/ containing 3 available checksum files:
     Errors: 0
   Photos/2019:
     Last checked: 2012-12-12_12:12:13
-    Errors: 0
+    Errors: 1
 
-0/116 checksums checked. 0 errors found!
+0/116 checksums checked. 1 errors found!
 ```
 
 Only print errors when verifying (Useful for cron jobs. Checking the exit code can also help.):
