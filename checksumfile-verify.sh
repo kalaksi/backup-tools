@@ -129,8 +129,7 @@ function checksumfile_verify {
             echo "    Last checked: ${metadata[0]}"
             if [ "${metadata[0]}" != "never" ]; then
                 echo -n "    Errors: ${metadata[1]}" | \
-                    sed -E -e "s/([1-9]+)$/${C_RED}\1${C_END}/" \
-                           -e "s/0$/${C_GREEN}0${C_END}/"
+                    sed -E -e "s/ ([^0][0-9]*)$/ ${C_RED}\1${C_END}/" -e "s/ 0$/ ${C_GREEN}0${C_END}/"
 
                 checksum_errors=$(($checksum_errors + ${metadata[1]}))
             fi
