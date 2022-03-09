@@ -21,6 +21,7 @@ declare HASH_BINARY="sha256sum"
 declare CHECKSUM_FILE="SHA256SUMS"
 declare -i VERIFY_PERCENTAGE=100
 declare STATUS_ONLY="no"
+declare QUIET="no"
 
 declare C_WHITE=$(printf "\033[1m")
 declare C_GREEN=$(printf "\033[1;32m")
@@ -42,6 +43,7 @@ Options:
   -p  Percentage of checksum files to process. E.g. "5" will mean that about 5% of the available
       checksum files will be processed. The file with the oldest check timestamp will be processed
       first. This means that it would take 20 days to go through all files. Default is $VERIFY_PERCENTAGE.
+  -q  Quiet mode. Only print file names that had errors.
   -s  Show status only. Scans all checksum files and lists check dates and failure counts.
 EOF
     exit 1
@@ -54,7 +56,7 @@ function get_check_metadata {
     metadata="$(sed -n -E '1 s/^# last checked ([0-9]+-[0-9]+-[0-9]+_[0-9]+:[0-9]+:[0-9]+) with ([0-9]+) failures/\1,\2/p' "$checksumfile" 2>/dev/null)"
 
     if [ $? -ne 0 ]; then
-        echo -e "${C_RED}Can't read checksum file${C_END} $checksumfile" >&2
+        echo -e "${C_RED}Can't read checksum file${C_END} $checksumfile"
         return 1
     fi
 
@@ -90,7 +92,10 @@ function list_checksumfiles_ordered {
     # Avoids plain file names at this point for simplicity.
     readarray -d '' sorted_indices < <(
       ( for i in "${!files[@]}"; do
-            metadata="$(get_check_metadata "${files[$i]}")" || continue
+            metadata="$(get_check_metadata "${files[$i]}")" || {
+                [ "$QUIET" == "yes" ] && readlink -f "${files[$i]}" >&2
+                continue
+            }
             printf "%s,%s\0" "$i" "$metadata"
         done ) | sort -t ',' -k 2 -z | cut -d ',' -f 1 -z
     )
@@ -139,12 +144,11 @@ function checksumfile_verify {
             while IFS='' read -r line; do
                 (
                   set -o pipefail
-                  # Apply some colors too depending on the output
-                  "$hash_binary" --strict -c 2>/dev/null <<<"$line" | \
-                  sed -e 's/^/    /' \
-                      -e "s/OK$/${C_GREEN}OK${C_END}/" \
-                      -e "s/FAILED/${C_RED}FAILED${C_END}/"
-                ) || ((checksum_errors += 1))
+                  "$hash_binary" --strict -c 2>/dev/null <<<"$line" | sed -e 's/^/    /' -e "s/OK$/${C_GREEN}OK${C_END}/" -e "s/FAILED/${C_RED}FAILED${C_END}/"
+                ) || {
+                    [ "$QUIET" == "yes" ] && echo "$(sed -E -e 's/^[^ ]+ .//' <<<$line | xargs readlink -f)" >&2
+                    ((checksum_errors += 1))
+                }
                 ((checksums_checked += 1))
 
             # Trim out comment lines
@@ -164,7 +168,7 @@ function checksumfile_verify {
 
     echo -ne "\n${C_WHITE}${checksums_checked}/${checksums_total}${C_END} checksums checked. "
     if [ $errors_total -gt 0 ]; then
-        echo -e "${C_RED}${errors_total}${C_END} errors found!" >&2
+        echo -e "${C_RED}${errors_total}${C_END} errors found!"
         return 2
     else
         echo -e "${C_GREEN}${errors_total}${C_END} errors found!"
@@ -173,12 +177,13 @@ function checksumfile_verify {
 }
 
 
-while getopts "shb:n:p:" option; do
+while getopts "sqhb:n:p:" option; do
     case $option in
         b) HASH_BINARY="$OPTARG";;
         n) CHECKSUM_FILE="$OPTARG";;
         p) VERIFY_PERCENTAGE="$OPTARG";;
         s) STATUS_ONLY="yes";;
+        q) QUIET="yes";;
         h) _help;;
         \?) _help;;
     esac
@@ -195,4 +200,8 @@ if [ -z "$CHECKSUM_FILE" ] || [ -z "${1:-}" ]; then
 fi
 
 # Exit code 1 is for generic runtime error and 2 means errors in checksums were found.
-checksumfile_verify "$HASH_BINARY" "$CHECKSUM_FILE" "$VERIFY_PERCENTAGE" "$1"
+if [ "$QUIET" == "no" ]; then
+    checksumfile_verify "$HASH_BINARY" "$CHECKSUM_FILE" "$VERIFY_PERCENTAGE" "$1"
+else
+    checksumfile_verify "$HASH_BINARY" "$CHECKSUM_FILE" "$VERIFY_PERCENTAGE" "$1" 2>&1 >/dev/null
+fi

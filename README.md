@@ -81,10 +81,10 @@ Processing directory Photos/ containing 3 available checksum files:
 0/116 checksums checked. 1 errors found!
 ```
 
-Only print errors when verifying (Useful for cron jobs. Checking the exit code can also help.):
+Use quiet mode to only print files with errors (checksum or other) when verifying (or creating). Useful for automated jobs and logging.
 ```
-$ ./checksumfile-verify.sh Photos/ >/dev/null
-1 errors found!
+$ ./checksumfile-verify.sh -q Photos/
+/home/user/Photos/birthday/def.jpg
 ```
 
 

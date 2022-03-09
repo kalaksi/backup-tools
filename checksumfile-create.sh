@@ -28,6 +28,7 @@ declare -i DIR_DEPTH=1
 declare -i UPDATE_EXISTING=0
 # Parameters for filtering find in find-command. For example, to only include files that are over 50kiB use: -f '-size +50k'
 declare FIND_PARAMS=""
+declare QUIET="no"
 
 declare C_WHITE=$(printf "\033[1m")
 declare C_GREEN=$(printf "\033[1;32m")
@@ -49,6 +50,7 @@ Options:
   -d  Subdirectory level where to create the checksum files. 0 means the main directory set by 'directory_name'. Default is 1.
   -b  Hash binary name such as md5sum, sha1sum or sha256sum. Default is $HASH_BINARY.
   -n  File name that will contain the checksum information. Default is $CHECKSUM_FILE.
+  -q  Quiet mode. Only print file names that couldn't be created or updated.
   -u  Update contents of existing checksum files. Adds new files and removes missing files. Default is to skip the directory instead.
 EOF
     exit 1
@@ -116,7 +118,7 @@ function checksumfile_create {
         # Use subshell so we won't change the current working directory or environment
         (
           echo -e "  ${C_WHITE}$workdir${C_END}:"
-          cd -- "$workdir" || exit 1
+          cd -- "$workdir" 2>&1 || exit 1
 
           if [ ! -s "$checksum_file" ]; then
               find_wrapper "$checksum_file" "$find_params" | xargs -r -0 -n1 "$hash_binary" | tee "$checksum_file" | sed -E 's/^[^ ]+/  /' || exit 1
@@ -124,31 +126,35 @@ function checksumfile_create {
               echo -ne "    \033[1;33m$(grep -c "^[^#]" "$checksum_file")${C_END} existing checksums available. "
               if [ $update_existing -eq 1 ]; then
                   echo "Checking for new or deleted files... "
-                  checksumfile_update "$hash_binary" "$checksum_file" "$find_params" || { echo -e "    ${C_RED}An error occurred. Updating aborted.${C_END}" >&2; exit 1; }
+                  checksumfile_update "$hash_binary" "$checksum_file" "$find_params" || { echo -e "    ${C_RED}An error occurred. Updating aborted.${C_END}"; exit 1; }
               else
                   echo "Skipping."
               fi
           fi
 
-        ) || ((errors += 1))
+        ) || {
+            [ "$QUIET" == "yes" ] && echo "$(readlink -f "$checksum_file")" >&2
+            ((errors += 1))
+        }
     done
 
     if [ $errors -eq 0 ]; then
         echo -e "\n${C_WHITE}Completed without errors.${C_END}"
         return 0
     else
-        echo -e "\nEncountered errors with ${C_RED}$errors${C_END} checksum files!" >&2
+        echo -e "\nEncountered errors with ${C_RED}$errors${C_END} checksum files!"
         return 2
     fi
 }
 
-while getopts "uhd:b:n:f:" option; do
+while getopts "quhd:b:n:f:" option; do
     case $option in
         d) DIR_DEPTH="$OPTARG";;
         b) HASH_BINARY="$OPTARG";;
         n) CHECKSUM_FILE="$OPTARG";;
         f) FIND_PARAMS="$OPTARG";;
         u) UPDATE_EXISTING=1;;
+        q) QUIET="yes";;
         h) _help;;
         \?) _help;;
     esac
@@ -164,6 +170,10 @@ if [ -z "$CHECKSUM_FILE" ] || [ ! $DIR_DEPTH -ge 0 ] || [ -z "${1:-}" ]; then
     _help
 fi
 
-# Exit code 1 is for critical runtime errors and 2 for non-critical errors with checksum files.
-checksumfile_create "$HASH_BINARY" "$CHECKSUM_FILE" "$DIR_DEPTH" "$FIND_PARAMS" "$UPDATE_EXISTING" "$1"
 
+if [ "$QUIET" == "no" ]; then
+    # Exit code 1 is for critical runtime errors and 2 for non-critical errors with checksum files.
+    checksumfile_create "$HASH_BINARY" "$CHECKSUM_FILE" "$DIR_DEPTH" "$FIND_PARAMS" "$UPDATE_EXISTING" "$1"
+else
+    checksumfile_create "$HASH_BINARY" "$CHECKSUM_FILE" "$DIR_DEPTH" "$FIND_PARAMS" "$UPDATE_EXISTING" "$1" 2>&1 >/dev/null
+fi
