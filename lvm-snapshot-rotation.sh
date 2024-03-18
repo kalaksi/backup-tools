@@ -20,7 +20,7 @@
 set -eu
 
 # Default values
-SNAPSHOT_COUNT=3
+declare -i SNAPSHOT_COUNT=3
 LV_SIZE="50G"
 DATE_SUFFIX="$(date +%Y%m%d%H%M%S)"
 
@@ -49,8 +49,10 @@ if [ -z "$VG_NAME" ] || [ -z "$LV_NAME" ]; then
     _help
 fi
 
-echo "* Creating a new snapshot (size: $LV_SIZE):"
-lvcreate -L "$LV_SIZE" -s -n "${LV_NAME}_snapshot_${DATE_SUFFIX}" "$LV_PATH"
+if [ "$SNAPSHOT_COUNT" -gt 0 ]; then
+    echo "* Creating a new snapshot (size: $LV_SIZE):"
+    lvcreate -L "$LV_SIZE" -s -n "${LV_NAME}_snapshot_${DATE_SUFFIX}" "$LV_PATH"
+fi
 
 echo "* Removing older snapshots:" 
 snapshot_path_glob="${LV_PATH}_snapshot_*"
