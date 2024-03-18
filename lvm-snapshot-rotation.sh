@@ -50,7 +50,7 @@ if [ -z "$VG_NAME" ] || [ -z "$LV_NAME" ]; then
 fi
 
 echo "* Creating a new snapshot (size: $LV_SIZE):"
-/sbin/lvcreate -L "$LV_SIZE" -s -n "${LV_NAME}_snapshot_${DATE_SUFFIX}" "$LV_PATH"
+lvcreate -L "$LV_SIZE" -s -n "${LV_NAME}_snapshot_${DATE_SUFFIX}" "$LV_PATH"
 
 echo "* Removing older snapshots:" 
 snapshot_path_glob="${LV_PATH}_snapshot_*"
@@ -66,6 +66,6 @@ while [ "$(ls -1q $snapshot_path_glob 2>/dev/null | wc -l)" -gt "$SNAPSHOT_COUNT
         exit 1
     fi
 
-    /sbin/lvremove -f "$oldest_snapshot"
+    lvremove -f "$oldest_snapshot"
 done
 exit 0
