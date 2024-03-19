@@ -68,6 +68,6 @@ while [ "$(ls -1q $snapshot_path_glob 2>/dev/null | wc -l)" -gt "$SNAPSHOT_COUNT
         exit 1
     fi
 
-    lvremove -f "$oldest_snapshot"
+    lvremove -y "$oldest_snapshot"
 done
 exit 0

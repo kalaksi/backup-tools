@@ -51,7 +51,7 @@ function _verify_block_device {
 
 function _cleanup {
     echo "* Cleaning up"
-    lvremove -f "$1"
+    lvremove -y "$1"
 }
 
 # MAIN:
